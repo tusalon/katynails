@@ -1,22 +1,22 @@
-// sw.js - Service Worker para Arlet Nails
+// sw.js - Service Worker para Katy Nails
 
-const CACHE_NAME = 'arletnails-v1';
+const CACHE_NAME = 'katynails-v1';
 const urlsToCache = [
-  '/arletnails/',
-  '/arletnails/index.html',
-  '/arletnails/admin.html',
-  '/arletnails/admin-login.html',
-  '/arletnails/setup-wizard.html',
-  '/arletnails/editar-negocio.html',
-  '/arletnails/manifest.json',
-  '/arletnails/icons/icon-72x72.png',
-  '/arletnails/icons/icon-96x96.png',
-  '/arletnails/icons/icon-128x128.png',
-  '/arletnails/icons/icon-144x144.png',
-  '/arletnails/icons/icon-152x152.png',
-  '/arletnails/icons/icon-192x192.png',
-  '/arletnails/icons/icon-384x384.png',
-  '/arletnails/icons/icon-512x512.png'
+  '/katynails/',
+  '/katynails/index.html',
+  '/katynails/admin.html',
+  '/katynails/admin-login.html',
+  '/katynails/setup-wizard.html',
+  '/katynails/editar-negocio.html',
+  '/katynails/manifest.json',
+  '/katynails/icons/icon-72x72.png',
+  '/katynails/icons/icon-96x96.png',
+  '/katynails/icons/icon-128x128.png',
+  '/katynails/icons/icon-144x144.png',
+  '/katynails/icons/icon-152x152.png',
+  '/katynails/icons/icon-192x192.png',
+  '/katynails/icons/icon-384x384.png',
+  '/katynails/icons/icon-512x512.png'
 ];
 
 // ============================================
@@ -108,7 +108,7 @@ self.addEventListener('fetch', event => {
           }
           // Si no hay cache y es imagen, devolver icon por defecto
           if (event.request.url.match(/\.(jpg|jpeg|png|gif|svg|webp)$/)) {
-            return caches.match('/arletnails/icons/icon-192x192.png');
+            return caches.match('/katynails/icons/icon-192x192.png');
           }
           return new Response('Error de red', { status: 408 });
         });
@@ -138,6 +138,6 @@ self.addEventListener('message', event => {
   }
 });
 
-console.log('✅ Service Worker configurado para Arlet Nails');
+console.log('✅ Service Worker configurado para Katy Nails');
 console.log('📦 Cache:', CACHE_NAME);
 console.log('📄 Archivos a cachear:', urlsToCache.length);

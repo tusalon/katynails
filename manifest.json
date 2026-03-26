@@ -1,20 +1,20 @@
 {
-  "name": "Arlet Nails",
-  "short_name": "Arlet",
+  "name": "Katy Nails",
+  "short_name": "Katy",
   "description": "Uñas y belleza - Tu espacio de cuidado personal",
-  "start_url": "/arletnails/",
-  "scope": "/arletnails/",
+  "start_url": "/katynails/",
+  "scope": "/katynails/",
   "display": "standalone",
   "background_color": "#ec4899",
   "theme_color": "#ec4899",
   "icons": [
     {
-      "src": "/arletnails/icons/icon-192x192.png",
+      "src": "/katynails/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/arletnails/icons/icon-512x512.png",
+      "src": "/katynails/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
