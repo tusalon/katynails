@@ -105,7 +105,6 @@ window.salonServicios = {
                 descripcion: servicio.descripcion || '',
                 activo: true,
                 imagen: servicio.imagen || null,
-                imagen_public_id: servicio.imagen_public_id || null,
                 horarios_permitidos: servicio.horarios_permitidos || []
             };
 
@@ -181,7 +180,6 @@ window.salonServicios = {
             if (cambios.descripcion !== undefined) datosActualizar.descripcion = cambios.descripcion;
             if (cambios.activo !== undefined) datosActualizar.activo = cambios.activo;
             if (cambios.imagen !== undefined) datosActualizar.imagen = cambios.imagen;
-            if (cambios.imagen_public_id !== undefined) datosActualizar.imagen_public_id = cambios.imagen_public_id;
             if (cambios.horarios_permitidos !== undefined) datosActualizar.horarios_permitidos = cambios.horarios_permitidos;
             
             let response = await fetch(

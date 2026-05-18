@@ -1,6 +1,6 @@
 // sw.js - Service Worker para Katy Nails
 
-const CACHE_NAME = 'katynails-v26';
+const CACHE_NAME = 'katynails-v25';
 const urlsToCache = [
   '/katynails/',
   '/katynails/index.html',
