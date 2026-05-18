@@ -439,28 +439,36 @@ function AdminApp() {
     };
 
     const getServiciosManualSeleccionados = () => {
-        const nombres = serviciosManualSeleccionados.length > 0
+        const valores = serviciosManualSeleccionados.length > 0
             ? serviciosManualSeleccionados
             : String(nuevaReservaData.servicio || '').split(' + ').map(nombre => nombre.trim()).filter(Boolean);
 
-        const servicios = nombres
-            .map(nombre => serviciosList.find(s => s.nombre === nombre))
+        const servicios = valores
+            .map(valor => {
+                const valorStr = String(valor);
+                return serviciosList.find(s => String(s.id) === valorStr) || serviciosList.find(s => s.nombre === valorStr);
+            })
             .filter(Boolean);
 
         const servicioUnico = getServicioManual();
         return servicios.length > 0 ? servicios : (servicioUnico ? [servicioUnico] : []);
     };
 
-    const toggleServicioManual = (nombreServicio) => {
-        const existe = serviciosManualSeleccionados.includes(nombreServicio);
+    const toggleServicioManual = (servicio) => {
+        const servicioId = String(servicio.id);
+        const existe = serviciosManualSeleccionados.includes(servicioId);
         const actualizados = existe
-            ? serviciosManualSeleccionados.filter(nombre => nombre !== nombreServicio)
-            : [...serviciosManualSeleccionados, nombreServicio];
+            ? serviciosManualSeleccionados.filter(id => id !== servicioId)
+            : [...serviciosManualSeleccionados, servicioId];
+
+        const nombresActualizados = actualizados
+            .map(id => serviciosList.find(s => String(s.id) === String(id))?.nombre)
+            .filter(Boolean);
 
         setServiciosManualSeleccionados(actualizados);
         setNuevaReservaData(data => ({
             ...data,
-            servicio: actualizados.join(' + '),
+            servicio: nombresActualizados.join(' + '),
             fecha: '',
             hora_inicio: ''
         }));
@@ -2322,7 +2330,8 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                         <select
                                             value={nuevaReservaData.servicio}
                                             onChange={(e) => {
-                                                setServiciosManualSeleccionados([e.target.value].filter(Boolean));
+                                                const servicio = serviciosList.find(s => s.nombre === e.target.value);
+                                                setServiciosManualSeleccionados(servicio ? [String(servicio.id)] : []);
                                                 setNuevaReservaData({...nuevaReservaData, servicio: e.target.value, fecha: '', hora_inicio: ''});
                                             }}
                                             className="w-full border rounded-lg px-3 py-2"
@@ -2335,12 +2344,12 @@ Cualquier cambio, pod√©s cancelarlo desde la app con hasta 1 hora de anticipaci√
                                     ) : (
                                         <div className="border rounded-xl p-2 max-h-60 overflow-y-auto bg-white space-y-2">
                                             {serviciosList.map(s => {
-                                                const seleccionado = serviciosManualSeleccionados.includes(s.nombre);
+                                                const seleccionado = serviciosManualSeleccionados.includes(String(s.id));
                                                 return (
                                                     <button
                                                         key={s.id}
                                                         type="button"
-                                                        onClick={() => toggleServicioManual(s.nombre)}
+                                                        onClick={() => toggleServicioManual(s)}
                                                         className={`w-full text-left p-3 rounded-lg border transition ${seleccionado ? 'bg-pink-50 border-pink-300 text-pink-800' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
                                                     >
                                                         <div className="flex items-center justify-between gap-3">
