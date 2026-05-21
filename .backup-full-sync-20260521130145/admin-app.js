@@ -420,9 +420,6 @@ function AdminApp() {
     const [disponibilidadConteos, setDisponibilidadConteos] = React.useState({});
     const [diasCerradosFechas, setDiasCerradosFechas] = React.useState([]);
     const [profesionalSeleccionadoDispo, setProfesionalSeleccionadoDispo] = React.useState(null);
-    const [cobroEditando, setCobroEditando] = React.useState(null);
-    const [cobroForm, setCobroForm] = React.useState({ monto_cobrado: '', notas_cobro: '' });
-    const [guardandoCobro, setGuardandoCobro] = React.useState(false);
 
     const [serviciosList, setServiciosList] = React.useState([]);
     const [profesionalesList, setProfesionalesList] = React.useState([]);
@@ -431,11 +428,6 @@ function AdminApp() {
     const [currentDate, setCurrentDate] = React.useState(new Date());
     const [diasLaborales, setDiasLaborales] = React.useState([]);
     const [fechasConHorarios, setFechasConHorarios] = React.useState({});
-
-    const esAdminPanel = userRole === 'admin';
-    const esProfesionalPanel = userRole === 'profesional';
-    const puedeGestionarReservas = esAdminPanel || (esProfesionalPanel && userNivel >= 2);
-    const puedeGestionarAvanzado = esAdminPanel || (esProfesionalPanel && userNivel >= 3);
 
     const getServicioManual = (servicioNombre = nuevaReservaData.servicio) => {
         if (!servicioNombre) return null;
@@ -447,28 +439,36 @@ function AdminApp() {
     };
 
     const getServiciosManualSeleccionados = () => {
-        const nombres = serviciosManualSeleccionados.length > 0
+        const valores = serviciosManualSeleccionados.length > 0
             ? serviciosManualSeleccionados
             : String(nuevaReservaData.servicio || '').split(' + ').map(nombre => nombre.trim()).filter(Boolean);
 
-        const servicios = nombres
-            .map(nombre => serviciosList.find(s => s.nombre === nombre))
+        const servicios = valores
+            .map(valor => {
+                const valorStr = String(valor);
+                return serviciosList.find(s => String(s.id) === valorStr) || serviciosList.find(s => s.nombre === valorStr);
+            })
             .filter(Boolean);
 
         const servicioUnico = getServicioManual();
         return servicios.length > 0 ? servicios : (servicioUnico ? [servicioUnico] : []);
     };
 
-    const toggleServicioManual = (nombreServicio) => {
-        const existe = serviciosManualSeleccionados.includes(nombreServicio);
+    const toggleServicioManual = (servicio) => {
+        const servicioId = String(servicio.id);
+        const existe = serviciosManualSeleccionados.includes(servicioId);
         const actualizados = existe
-            ? serviciosManualSeleccionados.filter(nombre => nombre !== nombreServicio)
-            : [...serviciosManualSeleccionados, nombreServicio];
+            ? serviciosManualSeleccionados.filter(id => id !== servicioId)
+            : [...serviciosManualSeleccionados, servicioId];
+
+        const nombresActualizados = actualizados
+            .map(id => serviciosList.find(s => String(s.id) === String(id))?.nombre)
+            .filter(Boolean);
 
         setServiciosManualSeleccionados(actualizados);
         setNuevaReservaData(data => ({
             ...data,
-            servicio: actualizados.join(' + '),
+            servicio: nombresActualizados.join(' + '),
             fecha: '',
             hora_inicio: ''
         }));
@@ -749,7 +749,7 @@ function AdminApp() {
         const diffDias = Math.ceil((new Date(year, month - 1, day) - hoy) / (1000 * 60 * 60 * 24));
         const minFechaPermitida = new Date(Date.now() + (minAntelacionHoras * 60 * 60 * 1000));
 
-        if (!reservaEditando && Number(maxAntelacionDias) > 0 && diffDias > Number(maxAntelacionDias)) return [];
+        if (!reservaEditando && diffDias > maxAntelacionDias) return [];
 
         const disponibles = slotsTrabajo.filter(slot => {
             const [horas, minutos] = slot.split(':').map(Number);
@@ -882,7 +882,7 @@ function AdminApp() {
                 const diaSemana = nombresDias[fechaActual.getDay()];
                 const diffDias = Math.ceil((fechaActual - hoy) / (1000 * 60 * 60 * 24));
 
-                if (!reservaEditando && Number(maxAntelacionDias) > 0 && diffDias > Number(maxAntelacionDias)) {
+                if (!reservaEditando && diffDias > maxAntelacionDias) {
                     disponibilidad[fechaStr] = false;
                     conteosDisponibles[fechaStr] = 0;
                     continue;
@@ -1189,10 +1189,6 @@ function AdminApp() {
     // CREAR RESERVA MANUAL
     // ============================================
     const handleCrearReservaManual = async () => {
-        if (!puedeGestionarReservas) {
-            alert('Tu nivel de acceso solo permite ver reservas.');
-            return;
-        }
         if (creandoReservaManualRef.current) return;
 
         if (!nuevaReservaData.cliente_nombre || !nuevaReservaData.cliente_whatsapp || 
@@ -1428,10 +1424,6 @@ function AdminApp() {
     };
 
     const handleBloquearCliente = async (cliente = null) => {
-        if (!puedeGestionarAvanzado) {
-            alert('No tenés permiso para bloquear clientes.');
-            return;
-        }
         const nombre = cliente?.nombre || nuevoBloqueo.nombre;
         const whatsapp = cliente?.whatsapp || nuevoBloqueo.whatsapp;
         const motivo = cliente ? prompt('Motivo del bloqueo (opcional):', '') : nuevoBloqueo.motivo;
@@ -1455,10 +1447,6 @@ function AdminApp() {
     };
 
     const handleDesbloquearCliente = async (whatsapp) => {
-        if (!puedeGestionarAvanzado) {
-            alert('No tenés permiso para desbloquear clientes.');
-            return;
-        }
         if (!confirm(`Desbloquear al cliente +${String(whatsapp).replace(/\D/g, '')}?`)) return;
         const ok = await window.desbloquearCliente?.(whatsapp);
         if (ok) {
@@ -1470,10 +1458,6 @@ function AdminApp() {
     };
 
     const handleEliminarCliente = async (whatsapp) => {
-        if (!puedeGestionarAvanzado) {
-            alert('No tenés permiso para eliminar clientes.');
-            return;
-        }
         if (!confirm('¿Seguro que querés eliminar este cliente? Perderá el acceso a la app.')) return;
         console.log('🗑️ Eliminando cliente:', whatsapp);
         try {
@@ -1572,10 +1556,6 @@ function AdminApp() {
     // FUNCIÓN PARA CONFIRMAR PAGO
     // ============================================
     const confirmarPago = async (id, bookingData) => {
-        if (!puedeGestionarReservas) {
-            alert('Tu nivel de acceso solo permite ver reservas.');
-            return;
-        }
         const reservasGrupo = bookingData?._reservasGrupo || [];
         if (bookingData?._grupoVisual && reservasGrupo.length > 1) {
             if (!confirm(`Confirmar que se recibió el pago de ${bookingData.cliente_nombre}? Los ${reservasGrupo.length} servicios pasarán a "Reservado".`)) return;
@@ -1705,10 +1685,6 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     // FUNCIÓN PARA BORRAR TODAS LAS RESERVAS CANCELADAS
     // ============================================
     const borrarCanceladas = async () => {
-        if (!puedeGestionarAvanzado) {
-            alert('No tenés permiso para borrar reservas canceladas.');
-            return;
-        }
         if (!confirm('Estas segura de querer borrar TODAS las reservas canceladas? Esta accion no se puede deshacer.')) return;
         
         try {
@@ -1742,142 +1718,10 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
         }
     };
 
-    const eliminarReservaHistorial = async (bookingData) => {
-        if (!puedeGestionarAvanzado) {
-            alert('No tenes permiso para eliminar citas del historial.');
-            return;
-        }
-
-        const estado = bookingData?.estado;
-        if (estado !== 'Cancelado' && estado !== 'Completado') {
-            alert('Solo se pueden eliminar citas canceladas o completadas.');
-            return;
-        }
-
-        const reservasGrupo = bookingData?._reservasGrupo || [];
-        const ids = reservasGrupo.length > 0 ? reservasGrupo.map(reserva => reserva.id) : [bookingData.id];
-        const detalle = reservasGrupo.length > 1 ? `la cita completa (${reservasGrupo.length} servicios)` : 'esta cita';
-        if (!confirm(`Eliminar ${detalle} del historial? Esta accion no se puede deshacer.`)) return;
-
-        try {
-            const negocioId = getNegocioId();
-            const response = await fetch(
-                `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&id=in.(${ids.join(',')})`,
-                {
-                    method: 'DELETE',
-                    headers: {
-                        'apikey': window.SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-
-            if (!response.ok) {
-                console.error('Error eliminando cita:', await response.text());
-                alert('Error al eliminar la cita');
-                return;
-            }
-
-            alert('Cita eliminada del historial');
-            fetchBookings();
-        } catch (error) {
-            console.error('Error eliminando cita:', error);
-            alert('Error al conectar con el servidor');
-        }
-    };
-
-    const abrirModalCobro = (bookingData) => {
-        if (!puedeGestionarReservas) {
-            alert('No tenes permiso para registrar cobros.');
-            return;
-        }
-        if (bookingData?.estado !== 'Completado') {
-            alert('Solo se puede registrar cobro real en citas completadas.');
-            return;
-        }
-
-        const montoActual = Number(bookingData.monto_cobrado || 0);
-        setCobroEditando(bookingData);
-        setCobroForm({
-            monto_cobrado: montoActual > 0 ? String(montoActual) : '',
-            notas_cobro: bookingData.notas_cobro || ''
-        });
-    };
-
-    const guardarCobroReal = async () => {
-        if (!cobroEditando || guardandoCobro) return;
-
-        const monto = Number(String(cobroForm.monto_cobrado || '').replace(',', '.'));
-        if (Number.isNaN(monto) || monto < 0) {
-            alert('Ingresa un monto cobrado valido.');
-            return;
-        }
-
-        setGuardandoCobro(true);
-        try {
-            const negocioId = getNegocioId();
-            const reservasGrupo = cobroEditando?._reservasGrupo || [];
-            const reservas = reservasGrupo.length > 0 ? reservasGrupo : [cobroEditando];
-            const precios = reservas.map(reserva => {
-                const servicio = serviciosList.find(item => item.nombre === reserva.servicio);
-                return Number(servicio?.precio || 0);
-            });
-            const totalPrecios = precios.reduce((total, precio) => total + precio, 0);
-            let acumulado = 0;
-
-            for (let index = 0; index < reservas.length; index++) {
-                const reserva = reservas[index];
-                const esUltima = index === reservas.length - 1;
-                const montoReserva = reservas.length === 1
-                    ? monto
-                    : esUltima
-                        ? Number((monto - acumulado).toFixed(2))
-                        : Number((monto * (totalPrecios > 0 ? precios[index] / totalPrecios : 1 / reservas.length)).toFixed(2));
-                acumulado += montoReserva;
-
-                const response = await fetch(
-                    `${window.SUPABASE_URL}/rest/v1/reservas?negocio_id=eq.${negocioId}&id=eq.${reserva.id}`,
-                    {
-                        method: 'PATCH',
-                        headers: {
-                            'apikey': window.SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            monto_cobrado: montoReserva,
-                            notas_cobro: cobroForm.notas_cobro || null,
-                            cobro_registrado_at: new Date().toISOString()
-                        })
-                    }
-                );
-
-                if (!response.ok) {
-                    throw new Error(await response.text());
-                }
-            }
-
-            alert('Cobro real guardado');
-            setCobroEditando(null);
-            setCobroForm({ monto_cobrado: '', notas_cobro: '' });
-            fetchBookings();
-        } catch (error) {
-            console.error('Error guardando cobro real:', error);
-            alert('Error al guardar el cobro real. Verifica que ejecutaste el SQL de cobro real.');
-        } finally {
-            setGuardandoCobro(false);
-        }
-    };
-
     // ============================================
     // HANDLE CANCEL
     // ============================================
     const handleCancel = async (id, bookingData) => {
-        if (!puedeGestionarReservas) {
-            alert('Tu nivel de acceso solo permite ver reservas.');
-            return;
-        }
         const reservasGrupo = bookingData?._reservasGrupo || [];
         if (bookingData?._grupoVisual && reservasGrupo.length > 1) {
             if (!confirm(`¿Cancelar la cita completa de ${bookingData.cliente_nombre}? Se cancelarán ${reservasGrupo.length} servicios.`)) return;
@@ -1930,7 +1774,6 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
             localStorage.removeItem('adminUser');
             localStorage.removeItem('adminLoginTime');
             localStorage.removeItem('profesionalAuth');
-            localStorage.removeItem('profesionalLoginTime');
             localStorage.removeItem('userRole');
             localStorage.removeItem('clienteAuth');
             localStorage.removeItem('negocioId');
@@ -1988,8 +1831,6 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
             return `${b.servicio}: ${profesional}`;
         });
         const duracionTotal = ordenadas.reduce((total, b) => total + Number(b.duracion || Math.max(0, timeToMinutes(b.hora_fin || b.hora_inicio) - timeToMinutes(b.hora_inicio)) || 0), 0);
-        const montoCobradoTotal = ordenadas.reduce((total, b) => total + Number(b.monto_cobrado || 0), 0);
-        const notasCobro = ordenadas.map(b => b.notas_cobro).filter(Boolean).join(' | ');
 
         return {
             ...primera,
@@ -2003,9 +1844,6 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
             hora_inicio: primera.hora_inicio,
             hora_fin: ultima.hora_fin || calculateEndTime(ultima.hora_inicio, ultima.duracion || 60),
             duracion: duracionTotal,
-            monto_cobrado: montoCobradoTotal || primera.monto_cobrado,
-            notas_cobro: notasCobro || primera.notas_cobro,
-            cobro_registrado_at: ordenadas.find(b => b.cobro_registrado_at)?.cobro_registrado_at || primera.cobro_registrado_at,
             estado: primera.estado
         };
     };
@@ -2083,8 +1921,6 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     const estadoNormalizado = (estado) => String(estado || '').trim().toLowerCase();
     const puedeEditarReserva = (booking) => {
         const estado = estadoNormalizado(booking.estado);
-        if (!puedeGestionarReservas) return false;
-        if (userRole === 'profesional' && profesional && Number(booking.profesional_id) !== Number(profesional.id)) return false;
         return estado !== 'cancelado' && estado !== 'cancelada' && estado !== 'completado' && estado !== 'completada';
     };
 
@@ -2255,10 +2091,6 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     };
 
     const abrirModalNuevaReserva = () => {
-        if (!puedeGestionarReservas) {
-            alert('Tu nivel de acceso solo permite ver reservas.');
-            return;
-        }
         setReservaEditando(null);
         setNuevaReservaData({
             cliente_nombre: '',
@@ -2279,14 +2111,6 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
     };
 
     const abrirModalReprogramar = (booking) => {
-        if (!puedeGestionarReservas) {
-            alert('Tu nivel de acceso solo permite ver reservas.');
-            return;
-        }
-        if (userRole === 'profesional' && profesional && Number(booking.profesional_id) !== Number(profesional.id)) {
-            alert('Solo podés editar tus propias reservas.');
-            return;
-        }
         const servicio = serviciosList.find(s => s.nombre === booking.servicio);
         setAgendaDetalleBooking(null);
         setReservaEditando(booking);
@@ -2367,7 +2191,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                         {/* BOTÓN NUEVA RESERVA */}
                         <button
                             onClick={abrirModalNuevaReserva}
-                            className={`${puedeGestionarReservas ? 'flex' : 'hidden'} items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-green-400 flex-1 sm:flex-none justify-center`}
+                            className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-green-400 flex-1 sm:flex-none justify-center"
                         >
                             <span className="text-lg">➕</span>
                             <span className="font-medium">Nueva Reserva</span>
@@ -2385,7 +2209,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
 
                         <button
                             onClick={() => window.location.href = 'editar-negocio.html'}
-                            className={`${puedeGestionarAvanzado ? 'flex' : 'hidden'} items-center gap-2 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-pink-400 flex-1 sm:flex-none justify-center`}
+                            className="flex items-center gap-2 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md border border-pink-400 flex-1 sm:flex-none justify-center"
                         >
                             <span className="text-lg">🏢</span>
                             <span className="font-medium">Editar Negocio</span>
@@ -2506,7 +2330,8 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                         <select
                                             value={nuevaReservaData.servicio}
                                             onChange={(e) => {
-                                                setServiciosManualSeleccionados([e.target.value].filter(Boolean));
+                                                const servicio = serviciosList.find(s => s.nombre === e.target.value);
+                                                setServiciosManualSeleccionados(servicio ? [String(servicio.id)] : []);
                                                 setNuevaReservaData({...nuevaReservaData, servicio: e.target.value, fecha: '', hora_inicio: ''});
                                             }}
                                             className="w-full border rounded-lg px-3 py-2"
@@ -2519,12 +2344,12 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                     ) : (
                                         <div className="border rounded-xl p-2 max-h-60 overflow-y-auto bg-white space-y-2">
                                             {serviciosList.map(s => {
-                                                const seleccionado = serviciosManualSeleccionados.includes(s.nombre);
+                                                const seleccionado = serviciosManualSeleccionados.includes(String(s.id));
                                                 return (
                                                     <button
                                                         key={s.id}
                                                         type="button"
-                                                        onClick={() => toggleServicioManual(s.nombre)}
+                                                        onClick={() => toggleServicioManual(s)}
                                                         className={`w-full text-left p-3 rounded-lg border transition ${seleccionado ? 'bg-pink-50 border-pink-300 text-pink-800' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
                                                     >
                                                         <div className="flex items-center justify-between gap-3">
@@ -2621,7 +2446,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                     >
                                         Cancelar
                                     </button>
-                                    {puedeGestionarReservas && reservaEditando?.estado === 'Pendiente' && (
+                                    {reservaEditando?.estado === 'Pendiente' && (
                                         <button
                                             onClick={async () => {
                                                 await confirmarPago(reservaEditando.id, reservaEditando);
@@ -3133,57 +2958,6 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                     </div>
                 )}
 
-                {cobroEditando && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-xl max-w-md w-full p-5 shadow-xl">
-                            <div className="flex items-start justify-between gap-4 border-b pb-3 mb-4">
-                                <div>
-                                    <p className="text-xs uppercase tracking-wide text-emerald-600 font-bold">Cobro real</p>
-                                    <h3 className="text-xl font-bold text-gray-900">{cobroEditando.cliente_nombre || 'Cliente sin nombre'}</h3>
-                                    <p className="text-sm text-gray-500">{cobroEditando.servicio}</p>
-                                </div>
-                                <button onClick={() => setCobroEditando(null)} disabled={guardandoCobro} className="text-gray-500 hover:text-gray-700 text-2xl leading-none">×</button>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Monto cobrado real</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={cobroForm.monto_cobrado}
-                                        onChange={(e) => setCobroForm({...cobroForm, monto_cobrado: e.target.value})}
-                                        className="w-full border rounded-lg px-3 py-2"
-                                        placeholder="Ej: 2500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nota opcional</label>
-                                    <textarea
-                                        value={cobroForm.notas_cobro}
-                                        onChange={(e) => setCobroForm({...cobroForm, notas_cobro: e.target.value})}
-                                        className="w-full border rounded-lg px-3 py-2 min-h-24"
-                                        placeholder="Ej: ajuste por diseño extra, descuento, propina..."
-                                    />
-                                </div>
-                                {cobroEditando._grupoVisual && (
-                                    <p className="text-xs text-gray-500">
-                                        Esta cita tiene varios servicios. El monto se distribuirá entre ellos para que las estadísticas sumen correctamente.
-                                    </p>
-                                )}
-                            </div>
-
-                            <div className="flex gap-3 mt-5">
-                                <button onClick={() => setCobroEditando(null)} disabled={guardandoCobro} className="flex-1 px-4 py-2 border rounded-lg disabled:opacity-50">Cancelar</button>
-                                <button onClick={guardarCobroReal} disabled={guardandoCobro} className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold disabled:opacity-60">
-                                    {guardandoCobro ? 'Guardando...' : 'Guardar cobro'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                 {/* RESERVAS */}
                 {tabActivo === 'reservas' && (
                     <>
@@ -3205,7 +2979,7 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                 <button onClick={() => setStatusFilter('completadas')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'completadas' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Completadas ({completadasCount})</button>
                                 <button onClick={() => setStatusFilter('canceladas')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'canceladas' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Canceladas ({canceladasCount})</button>
                                 <button onClick={() => setStatusFilter('todas')} className={`px-4 py-2 rounded-lg text-sm font-medium ${statusFilter === 'todas' ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-700'}`}>Todas ({bookings.length})</button>
-                                {puedeGestionarAvanzado && statusFilter === 'canceladas' && (
+                                {statusFilter === 'canceladas' && (
                                     <button onClick={borrarCanceladas} className="px-4 py-2 bg-red-700 text-white rounded-lg text-sm">🗑️ Borrar todas</button>
                                 )}
                             </div>
@@ -3244,34 +3018,20 @@ Cualquier cambio, podés cancelarlo desde la app con hasta 1 hora de anticipaci�
                                                         ))}
                                                     </div>
                                                 )}
-                                                {Number(b.monto_cobrado || 0) > 0 && (
-                                                    <div className="mt-2 rounded-lg bg-green-50 border border-green-100 p-2">
-                                                        <p className="text-xs font-bold text-green-700">Cobro real: ${Number(b.monto_cobrado).toLocaleString('es-CU')}</p>
-                                                        {b.notas_cobro && <p className="text-xs text-green-700 mt-1">{b.notas_cobro}</p>}
-                                                    </div>
-                                                )}
                                             </div>
                                             <div className="flex justify-between items-center mt-3 pt-2 border-t">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${b.estado === 'Reservado' ? 'bg-pink-100 text-pink-700' : b.estado === 'Pendiente' ? 'bg-yellow-100 text-yellow-700' : b.estado === 'Completado' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                                     {b.estado}
                                                 </span>
-                                                <div className="flex flex-wrap justify-end gap-2">
-                                                    {puedeEditarReserva(b) && (b.estado === 'Pendiente' || b.estado === 'Reservado') && (
+                                                <div className="flex gap-2">
+                                                    {(b.estado === 'Pendiente' || b.estado === 'Reservado') && (
                                                         <button onClick={() => abrirModalReprogramar(b)} className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600">Reprogramar</button>
                                                     )}
-                                                    {puedeGestionarReservas && b.estado === 'Pendiente' && (
+                                                    {b.estado === 'Pendiente' && (
                                                         <button onClick={() => confirmarPago(b.id, b)} className="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">Confirmar pago</button>
                                                     )}
-                                                    {puedeGestionarReservas && b.estado === 'Reservado' && (
+                                                    {b.estado === 'Reservado' && (
                                                         <button onClick={() => handleCancel(b.id, b)} className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">❌ Cancelar</button>
-                                                    )}
-                                                    {puedeGestionarReservas && b.estado === 'Completado' && (
-                                                        <button onClick={() => abrirModalCobro(b)} className="px-3 py-1 bg-emerald-500 text-white rounded-lg text-sm hover:bg-emerald-600">
-                                                            {Number(b.monto_cobrado || 0) > 0 ? 'Editar cobro' : 'Cobro real'}
-                                                        </button>
-                                                    )}
-                                                    {puedeGestionarAvanzado && (b.estado === 'Cancelado' || b.estado === 'Completado') && (
-                                                        <button onClick={() => eliminarReservaHistorial(b)} className="px-3 py-1 bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-800">Eliminar</button>
                                                     )}
                                                 </div>
                                             </div>
