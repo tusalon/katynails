@@ -1,6 +1,6 @@
 // sw.js - Service Worker para Katy Nails
 
-const CACHE_NAME = 'katynails-v29';
+const CACHE_NAME = 'katynails-v47';
 const urlsToCache = [
   '/katynails/',
   '/katynails/index.html',
@@ -17,7 +17,14 @@ const urlsToCache = [
   '/katynails/icons/icon-152x152.png',
   '/katynails/icons/icon-192x192.png',
   '/katynails/icons/icon-384x384.png',
-  '/katynails/icons/icon-512x512.png'
+  '/katynails/icons/icon-512x512.png',
+  '/katynails/vendor/react.production.min.js',
+  '/katynails/vendor/react-dom.production.min.js',
+  '/katynails/vendor/babel.min.js',
+  '/katynails/vendor/bcrypt.min.js',
+  '/katynails/vendor/tailwind-browser.js',
+  '/katynails/vendor/lucide/lucide.css',
+  '/katynails/vendor/lucide/lucide.woff2'
 ];
 
 // ============================================
